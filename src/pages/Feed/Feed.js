@@ -131,7 +131,7 @@ class Feed extends Component {
     //Instead it has to be 'multipart/form-data' that we set on form when multiple type of data
     //This we can achieve using 'formData' provided by inbuilt javascript to mimic a form 
     //It automatically sets the type to multipart/form-data when it sees multi type of data and we do not need to set it manually
-    const formData = new FormData();
+    /*const formData = new FormData();
     formData.append('title', postData.title);
     formData.append('content', postData.content);
     formData.append('image', postData.image);
@@ -155,14 +155,43 @@ class Feed extends Component {
       headers: {
         Authorization: 'Bearer ' + this.props.token
       }
+    })*/
+    const graphqlQuery = {
+      query: `
+        mutation {
+          createPost(postInput: {title: "${postData.title}", content: "${postData.content}", imageUrl: "some url"}){
+            _id
+            title
+            content
+            creator {
+              name
+            }
+            createdAt
+          }
+        }
+      `
+    }
+  
+    fetch('http://localhost:8080/graphql', {
+      method: 'POST',
+      body: JSON.stringify(graphqlQuery),
+      headers: {
+        Authorization: 'Bearer ' + this.props.token,
+        'Content-Type' : 'application/json'
+      }
     })
       .then(res => {
-        if (res.status !== 200 && res.status !== 201) {
-          throw new Error('Creating or editing a post failed!');
-        }
         return res.json();
       })
       .then(resData => {
+        if (resData.errors &&  resData.errors[0].status === 401) {
+          throw new Error(
+            "Validation failed. Please check your inputs"
+          );
+        }
+        if (resData.errors) {
+          throw new Error('User Login failed');
+        }
         console.log(resData);
         const post = {
           _id: resData.post._id,
