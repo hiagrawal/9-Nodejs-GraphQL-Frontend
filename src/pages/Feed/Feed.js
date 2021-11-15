@@ -22,19 +22,38 @@ class Feed extends Component {
   };
 
   componentDidMount() {
-    fetch('http://localhost:8080/auth/status', {
+    const graphqlQuery = {
+      query: `
+      {
+        user{
+          status
+        }
+      }
+      `
+    }
+  
+    fetch('http://localhost:8080/graphql', {
+      method: 'POST',
+      body: JSON.stringify(graphqlQuery),
       headers: {
-        Authorization: 'Bearer ' + this.props.token
+        Authorization: 'Bearer ' + this.props.token,
+        'Content-Type' : 'application/json'
       }
     })
-      .then(res => {
-        if (res.status !== 200) {
-          throw new Error('Failed to fetch user status.');
-        }
-        return res.json();
-      })
-      .then(resData => {
-        this.setState({ status: resData.status });
+    .then(res => {
+      return res.json();
+    })
+    .then(resData => {
+      if (resData.errors &&  resData.errors[0].status === 401) {
+        throw new Error(
+          "Validation failed. Please check your inputs"
+        );
+      }
+      if (resData.errors) {
+        throw new Error(resData.errors);
+      }
+      console.log(resData);
+      this.setState({ status: resData.data.user.status });
       })
       .catch(this.catchError);
 
@@ -95,24 +114,36 @@ class Feed extends Component {
 
   statusUpdateHandler = event => {
     event.preventDefault();
-    fetch('http://localhost:8080/auth/status', {
+    let graphqlQuery = {
+      query: `
+        mutation {
+          updateStatus(status: "${this.state.status}"){
+            status
+          }
+        }
+      `
+    }
+    fetch('http://localhost:8080/graphql', {
+      method: 'POST',
+      body: JSON.stringify(graphqlQuery),
       headers: {
         Authorization: 'Bearer ' + this.props.token,
-        'Content-Type': 'application/json'
-      },
-      method: 'PATCH',
-      body: JSON.stringify({
-        status: this.state.status
-      })
+        'Content-Type' : 'application/json'
+      }
     })
-      .then(res => {
-        if (res.status !== 200 && res.status !== 201) {
-          throw new Error("Can't update status!");
-        }
-        return res.json();
-      })
-      .then(resData => {
-        console.log(resData);
+    .then(res => {
+      return res.json();
+    })
+    .then(resData => {
+      if (resData.errors &&  resData.errors[0].status === 401) {
+        throw new Error(
+          "Validation failed. Please check your inputs"
+        );
+      }
+      if (resData.errors) {
+        throw new Error(resData.errors);
+      }
+      console.log(resData);
       })
       .catch(this.catchError);
   };
